@@ -5,7 +5,7 @@ import { Button, ListItem, Switch, Text } from '@rneui/themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppContext } from '../context/AppContext';
 import { clearSession } from '../services/session';
-import { resetPreferences, setDarkTheme } from '../storage/preferences';
+import { DEFAULT_PREFERENCES, resetPreferences, setDarkTheme } from '../storage/preferences';
 import { colors } from '../theme/theme';
 
 function SettingRow({ icon, title, description, value, onChange }) {
@@ -24,12 +24,19 @@ function SettingRow({ icon, title, description, value, onChange }) {
 }
 
 export default function SettingsScreen({ navigation }) {
-  const { preferences, setPreferences, session, setSession } = useAppContext();
+  const { preferences, setPreferences, setCardLayoutPreference, session, setSession } =
+    useAppContext();
   const [message, setMessage] = useState('');
 
   function changeDarkTheme(value) {
     setPreferences((current) => ({ ...current, darkTheme: value }));
     setDarkTheme(value).catch(() => setMessage('Could not save your preference.'));
+  }
+
+  function changeCompactLayout(value) {
+    setCardLayoutPreference(value ? 'compact' : 'standard').catch(() =>
+      setMessage('Could not save your preference.')
+    );
   }
 
   function handleReset() {
@@ -43,7 +50,7 @@ export default function SettingsScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             await resetPreferences();
-            setPreferences({ darkTheme: false });
+            setPreferences(DEFAULT_PREFERENCES);
             setMessage('App data reset.');
           },
         },
@@ -79,6 +86,14 @@ export default function SettingsScreen({ navigation }) {
             onChange={changeDarkTheme}
             title="Dark theme"
             value={preferences.darkTheme}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            description="Show more events on screen at once"
+            icon="view-headline"
+            onChange={changeCompactLayout}
+            title="Compact event list"
+            value={preferences.cardLayout === 'compact'}
           />
         </View>
 

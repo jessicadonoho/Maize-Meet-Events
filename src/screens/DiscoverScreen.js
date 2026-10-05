@@ -19,6 +19,12 @@ import { colors } from '../theme/theme';
 
 const categories = ['All', 'Academic', 'Arts', 'Career', 'Community', 'Workshop'];
 
+<<<<<<< HEAD
+const layoutOptions = [
+  { value: 'standard', label: 'Card layout', icon: 'view-agenda-outline' },
+  { value: 'compact', label: 'Compact layout', icon: 'view-headline' },
+];
+=======
 function normalizeSearch(value) {
   return String(value || '')
     .normalize('NFD')
@@ -28,14 +34,27 @@ function normalizeSearch(value) {
     .trim()
     .replace(/\s+/g, ' ');
 }
+>>>>>>> origin/main
 
 export default function DiscoverScreen({ navigation }) {
-  const { events, setEvents, savedEventIds, toggleSaved } = useAppContext();
+  const {
+    events,
+    setEvents,
+    savedEventIds,
+    toggleSaved,
+    preferences,
+    setCardLayoutPreference,
+  } = useAppContext();
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
+<<<<<<< HEAD
+  const [layoutError, setLayoutError] = useState('');
+  const compact = preferences.cardLayout === 'compact';
+=======
   const listRef = useRef(null);
+>>>>>>> origin/main
 
   const filteredEvents = useMemo(() => {
     const searchTerms = normalizeSearch(query).split(' ').filter(Boolean);
@@ -74,6 +93,13 @@ export default function DiscoverScreen({ navigation }) {
     } finally {
       setRefreshing(false);
     }
+  }
+
+  function changeLayout(cardLayout) {
+    setLayoutError('');
+    setCardLayoutPreference(cardLayout).catch(() =>
+      setLayoutError('Could not save your layout preference.')
+    );
   }
 
   function clearFilters() {
@@ -125,15 +151,51 @@ export default function DiscoverScreen({ navigation }) {
         })}
       </View>
 
+      <View style={styles.listHeader}>
+        <Text style={styles.resultCount}>
+          {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'}
+        </Text>
+        <View style={styles.layoutToggle}>
+          {layoutOptions.map((option) => {
+            const selected = option.value === preferences.cardLayout;
+            return (
+              <Pressable
+                accessibilityLabel={option.label}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                key={option.value}
+                onPress={() => changeLayout(option.value)}
+                style={[styles.layoutOption, selected && styles.selectedLayoutOption]}
+              >
+                <MaterialCommunityIcons
+                  color={selected ? '#FFFFFF' : colors.blue}
+                  name={option.icon}
+                  size={20}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {refreshError ? <Text style={styles.refreshError}>{refreshError}</Text> : null}
+      {layoutError ? <Text style={styles.refreshError}>{layoutError}</Text> : null}
 
       <FlatList
         ref={listRef}
         contentContainerStyle={filteredEvents.length ? styles.list : styles.emptyList}
         data={filteredEvents}
+<<<<<<< HEAD
+        extraData={[savedEventIds, preferences.cardLayout]}
+        ItemSeparatorComponent={() => (
+          <View style={compact ? styles.compactSeparator : styles.separator} />
+        )}
+        keyExtractor={(item) => item.id}
+=======
         extraData={savedEventIds}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         keyExtractor={(_, index) => String(index)}
+>>>>>>> origin/main
         ListEmptyComponent={
           <EmptyState
             actionLabel="Clear filters"
@@ -147,6 +209,7 @@ export default function DiscoverScreen({ navigation }) {
           <EventCard
             event={item}
             initiallySaved={savedEventIds.includes(item.id)}
+            layout={preferences.cardLayout}
             onPress={() =>
               navigation.navigate('EventDetails', {
                 eventIndex: index,
@@ -200,8 +263,26 @@ const styles = StyleSheet.create({
   selectedChip: { backgroundColor: colors.blue, borderColor: colors.blue },
   chipText: { color: colors.blue, fontSize: 13, fontWeight: '700' },
   selectedChipText: { color: '#FFFFFF' },
+  listHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 20,
+  },
+  resultCount: { color: colors.muted, fontSize: 13, fontWeight: '700' },
+  layoutToggle: {
+    borderColor: '#AAB4BE',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  layoutOption: { alignItems: 'center', height: 44, justifyContent: 'center', width: 48 },
+  selectedLayoutOption: { backgroundColor: colors.blue },
   refreshError: { color: colors.danger, marginHorizontal: 20, marginBottom: 8 },
   list: { paddingBottom: 28, paddingHorizontal: 20 },
   emptyList: { flexGrow: 1 },
   separator: { height: 12 },
+  compactSeparator: { height: 6 },
 });

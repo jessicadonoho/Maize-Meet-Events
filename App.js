@@ -13,6 +13,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AppContextProvider, useAppContext } from './src/context/AppContext';
 import { initializeDatabase } from './src/db/database';
 import { restoreSession } from './src/services/session';
+import { DEFAULT_PREFERENCES, getPreferences } from './src/storage/preferences';
 import { appTheme, colors } from './src/theme/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -44,10 +45,18 @@ function AppContent({ initialSession }) {
 export default function App() {
   const [ready, setReady] = useState(false);
   const [initialSession, setInitialSession] = useState(null);
+  const [initialPreferences, setInitialPreferences] = useState(DEFAULT_PREFERENCES);
 
   useEffect(() => {
-    Promise.all([initializeDatabase(), restoreSession()])
-      .then(([, session]) => setInitialSession(session))
+    Promise.all([
+      initializeDatabase(),
+      restoreSession(),
+      getPreferences().catch(() => DEFAULT_PREFERENCES),
+    ])
+      .then(([, session, preferences]) => {
+        setInitialSession(session);
+        setInitialPreferences(preferences);
+      })
       .finally(() => {
         setReady(true);
         SplashScreen.hideAsync().catch(() => {});
@@ -65,7 +74,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider theme={appTheme}>
-        <AppContextProvider initialSession={initialSession}>
+        <AppContextProvider
+          initialPreferences={initialPreferences}
+          initialSession={initialSession}
+        >
           <AppContent initialSession={initialSession} />
         </AppContextProvider>
       </ThemeProvider>
