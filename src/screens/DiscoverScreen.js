@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -19,34 +19,60 @@ import { colors } from '../theme/theme';
 
 const categories = ['All', 'Academic', 'Arts', 'Career', 'Community', 'Workshop'];
 
+function normalizeSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘]/g, "'")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 export default function DiscoverScreen({ navigation }) {
   const { events, setEvents, savedEventIds, toggleSaved } = useAppContext();
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
+  const listRef = useRef(null);
 
   const filteredEvents = useMemo(() => {
+    const searchTerms = normalizeSearch(query).split(' ').filter(Boolean);
+
     return [...events]
       .sort((left, right) => new Date(left.startsAt) - new Date(right.startsAt))
       .filter((event) => {
-        const matchesSearch = !query || event.title.includes(query);
+        const searchableText = normalizeSearch([
+          event.title,
+          event.description,
+          event.category,
+          event.location,
+          event.room,
+          ...(event.tags || []),
+        ].join(' '));
+        const matchesSearch = searchTerms.every((term) => searchableText.includes(term));
         const matchesCategory =
-          selectedCategory === 'All' || event.category === selectedCategory;
+          selectedCategory === 'All' ||
+          normalizeSearch(event.category) === normalizeSearch(selectedCategory);
         return matchesSearch && matchesCategory;
       });
-  }, [events, query]);
+  }, [events, query, selectedCategory]);
+
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [query, selectedCategory]);
 
   async function handleRefresh() {
     setRefreshing(true);
     setRefreshError('');
-    setEvents([]);
     try {
       const nextEvents = await refreshEvents();
       setEvents(nextEvents);
-      setRefreshing(false);
     } catch (error) {
       setRefreshError(error.message);
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -66,6 +92,10 @@ export default function DiscoverScreen({ navigation }) {
       <View style={styles.searchBox}>
         <MaterialCommunityIcons color={colors.muted} name="magnify" size={21} />
         <TextInput
+          accessibilityLabel="Search events"
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
           onChangeText={setQuery}
           placeholder="Search events"
           placeholderTextColor="#7B858E"
@@ -80,6 +110,7 @@ export default function DiscoverScreen({ navigation }) {
           const selected = category === selectedCategory;
           return (
             <Pressable
+              accessibilityLabel={`${category} events`}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               key={category}
@@ -97,11 +128,12 @@ export default function DiscoverScreen({ navigation }) {
       {refreshError ? <Text style={styles.refreshError}>{refreshError}</Text> : null}
 
       <FlatList
+        ref={listRef}
         contentContainerStyle={filteredEvents.length ? styles.list : styles.emptyList}
         data={filteredEvents}
         extraData={savedEventIds}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(_, index) => String(index)}
         ListEmptyComponent={
           <EmptyState
             actionLabel="Clear filters"
@@ -117,7 +149,7 @@ export default function DiscoverScreen({ navigation }) {
             initiallySaved={savedEventIds.includes(item.id)}
             onPress={() =>
               navigation.navigate('EventDetails', {
-                eventId: item.id,
+                eventIndex: index,
                 source: 'Discover',
               })
             }
