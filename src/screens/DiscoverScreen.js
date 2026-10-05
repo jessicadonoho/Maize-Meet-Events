@@ -27,13 +27,14 @@ export default function DiscoverScreen({ navigation }) {
   const [refreshError, setRefreshError] = useState('');
 
   const filteredEvents = useMemo(() => {
-    events.sort((left, right) => new Date(left.startsAt) - new Date(right.startsAt));
-    return events.filter((event) => {
-      const matchesSearch = !query || event.title.includes(query);
-      const matchesCategory =
-        selectedCategory === 'All' || event.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
+    return [...events]
+      .sort((left, right) => new Date(left.startsAt) - new Date(right.startsAt))
+      .filter((event) => {
+        const matchesSearch = !query || event.title.includes(query);
+        const matchesCategory =
+          selectedCategory === 'All' || event.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+      });
   }, [events, query]);
 
   async function handleRefresh() {
@@ -98,8 +99,9 @@ export default function DiscoverScreen({ navigation }) {
       <FlatList
         contentContainerStyle={filteredEvents.length ? styles.list : styles.emptyList}
         data={filteredEvents}
+        extraData={savedEventIds}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        keyExtractor={(_, index) => String(index)}
+        keyExtractor={(item) => item.id}
         ListEmptyComponent={
           <EmptyState
             actionLabel="Clear filters"
@@ -109,13 +111,13 @@ export default function DiscoverScreen({ navigation }) {
           />
         }
         refreshControl={<RefreshControl onRefresh={handleRefresh} refreshing={refreshing} />}
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (
           <EventCard
             event={item}
             initiallySaved={savedEventIds.includes(item.id)}
             onPress={() =>
               navigation.navigate('EventDetails', {
-                eventIndex: index,
+                eventId: item.id,
                 source: 'Discover',
               })
             }
