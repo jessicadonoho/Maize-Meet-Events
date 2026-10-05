@@ -19,12 +19,11 @@ import { colors } from '../theme/theme';
 
 const categories = ['All', 'Academic', 'Arts', 'Career', 'Community', 'Workshop'];
 
-<<<<<<< HEAD
 const layoutOptions = [
   { value: 'standard', label: 'Card layout', icon: 'view-agenda-outline' },
   { value: 'compact', label: 'Compact layout', icon: 'view-headline' },
 ];
-=======
+
 function normalizeSearch(value) {
   return String(value || '')
     .normalize('NFD')
@@ -34,7 +33,6 @@ function normalizeSearch(value) {
     .trim()
     .replace(/\s+/g, ' ');
 }
->>>>>>> origin/main
 
 export default function DiscoverScreen({ navigation }) {
   const {
@@ -49,12 +47,9 @@ export default function DiscoverScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
-<<<<<<< HEAD
   const [layoutError, setLayoutError] = useState('');
   const compact = preferences.cardLayout === 'compact';
-=======
   const listRef = useRef(null);
->>>>>>> origin/main
 
   const filteredEvents = useMemo(() => {
     const searchTerms = normalizeSearch(query).split(' ').filter(Boolean);
@@ -185,17 +180,11 @@ export default function DiscoverScreen({ navigation }) {
         ref={listRef}
         contentContainerStyle={filteredEvents.length ? styles.list : styles.emptyList}
         data={filteredEvents}
-<<<<<<< HEAD
         extraData={[savedEventIds, preferences.cardLayout]}
         ItemSeparatorComponent={() => (
           <View style={compact ? styles.compactSeparator : styles.separator} />
         )}
         keyExtractor={(item) => item.id}
-=======
-        extraData={savedEventIds}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        keyExtractor={(_, index) => String(index)}
->>>>>>> origin/main
         ListEmptyComponent={
           <EmptyState
             actionLabel="Clear filters"
@@ -211,10 +200,7 @@ export default function DiscoverScreen({ navigation }) {
             initiallySaved={savedEventIds.includes(item.id)}
             layout={preferences.cardLayout}
             onPress={() =>
-              navigation.navigate('EventDetails', {
-                eventIndex: index,
-                source: 'Discover',
-              })
+              navigation.navigate('EventDetails', { eventId: item.id })
             }
             onToggleSaved={toggleSaved}
           />

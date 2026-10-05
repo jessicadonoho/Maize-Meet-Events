@@ -12,6 +12,8 @@ const mockContext = {
   setEvents: jest.fn(),
   savedEventIds: [],
   toggleSaved: jest.fn(),
+  preferences: { darkTheme: false, cardLayout: 'standard' },
+  setCardLayoutPreference: jest.fn(() => Promise.resolve()),
 };
 
 jest.mock('../../context/AppContext', () => ({ useAppContext: () => mockContext }));
