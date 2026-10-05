@@ -71,7 +71,8 @@ export async function initializeDatabase() {
     await db.runAsync(
       `INSERT OR IGNORE INTO events
         (id, title, description, startsAt, endsAt, category, location, room, capacity, registeredCount, tags)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       WHERE NOT EXISTS (SELECT 1 FROM events WHERE id = ?)`,
       event.id,
       event.title,
       event.description,
@@ -79,10 +80,11 @@ export async function initializeDatabase() {
       event.endsAt,
       event.category,
       event.location,
-      event.room,
+      event.room ?? null,
       event.capacity,
       event.registeredCount,
-      event.tags ? JSON.stringify(event.tags) : null
+      event.tags ? JSON.stringify(event.tags) : null,
+      event.id
     );
   }
 }
@@ -90,14 +92,20 @@ export async function initializeDatabase() {
 function mapEvent(row) {
   return {
     ...row,
-    tags: row.tags ? JSON.parse(row.tags) : undefined,
+    tags: row.tags ? JSON.parse(row.tags) : [],
   };
 }
 
 export async function getEvents() {
   try {
     const db = await getDatabase();
-    const rows = await db.getAllAsync('SELECT * FROM events');
+    // Earlier versions seeded duplicates on every launch. Read one canonical
+    // row per event ID so FlatList keys remain unique, preserving stored rows.
+    const rows = await db.getAllAsync(`
+      SELECT * FROM events
+      WHERE rowId IN (SELECT MIN(rowId) FROM events GROUP BY id)
+      ORDER BY startsAt, rowId
+    `);
     return rows.map(mapEvent);
   } catch {
     return [];
@@ -106,7 +114,9 @@ export async function getEvents() {
 
 export async function getEvent(eventId) {
   const db = await getDatabase();
-  const row = await db.getFirstAsync('SELECT * FROM events WHERE id = ?', eventId);
+  const row = await db.getFirstAsync(
+    'SELECT * FROM events WHERE id = ? ORDER BY rowId LIMIT 1', eventId
+  );
   return row ? mapEvent(row) : null;
 }
 
@@ -116,7 +126,9 @@ export async function getSavedEvents() {
     const rows = await db.getAllAsync(`
       SELECT DISTINCT events.*
       FROM events
-      INNER JOIN saved_events ON saved_events.eventId = events.id
+      WHERE events.rowId IN (SELECT MIN(rowId) FROM events GROUP BY id)
+        AND EXISTS (SELECT 1 FROM saved_events WHERE saved_events.eventId = events.id)
+      ORDER BY events.startsAt, events.rowId
     `);
     return rows.map(mapEvent);
   } catch {
