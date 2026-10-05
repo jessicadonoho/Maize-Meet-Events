@@ -4,6 +4,7 @@ import { seedEvents } from '../data/seedEvents';
 const DATABASE_NAME = 'maizemeet.db';
 
 let databasePromise;
+let savedToggleQueue = Promise.resolve();
 
 export function getDatabase() {
   if (!databasePromise) {
@@ -55,9 +56,20 @@ export async function initializeDatabase() {
     );
   `);
 
+  // Older app versions seeded on every launch and allowed repeated saves. Clean
+  // those rows before adding the constraints that keep the data canonical.
+  await db.execAsync(`
+    DELETE FROM events
+    WHERE rowId NOT IN (SELECT MIN(rowId) FROM events GROUP BY id);
+    DELETE FROM saved_events
+    WHERE rowId NOT IN (SELECT MIN(rowId) FROM saved_events GROUP BY eventId);
+    CREATE UNIQUE INDEX IF NOT EXISTS events_id_unique ON events(id);
+    CREATE UNIQUE INDEX IF NOT EXISTS saved_events_event_id_unique ON saved_events(eventId);
+  `);
+
   for (const event of seedEvents) {
     await db.runAsync(
-      `INSERT INTO events
+      `INSERT OR IGNORE INTO events
         (id, title, description, startsAt, endsAt, category, location, room, capacity, registeredCount, tags)
        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM events WHERE id = ?)`,
@@ -112,7 +124,7 @@ export async function getSavedEvents() {
   try {
     const db = await getDatabase();
     const rows = await db.getAllAsync(`
-      SELECT events.*
+      SELECT DISTINCT events.*
       FROM events
       WHERE events.rowId IN (SELECT MIN(rowId) FROM events GROUP BY id)
         AND EXISTS (SELECT 1 FROM saved_events WHERE saved_events.eventId = events.id)
@@ -127,27 +139,40 @@ export async function getSavedEvents() {
 export async function getSavedEventIds() {
   try {
     const db = await getDatabase();
-    const rows = await db.getAllAsync('SELECT eventId FROM saved_events');
+    const rows = await db.getAllAsync('SELECT DISTINCT eventId FROM saved_events');
     return rows.map((row) => row.eventId);
   } catch {
     return [];
   }
 }
 
-export async function toggleSavedEvent(eventId) {
-  const db = await getDatabase();
-  const saved = await db.getFirstAsync(
-    'SELECT rowId FROM saved_events WHERE eventId = ?',
-    eventId
-  );
+export function toggleSavedEvent(eventId) {
+  // Serialize toggles so two quick taps cannot both observe an unsaved row and
+  // insert duplicates. The database constraint above is a second safeguard.
+  const toggle = savedToggleQueue.then(async () => {
+    const db = await getDatabase();
+    let isSaved;
 
-  if (saved) {
-    await db.runAsync('DELETE FROM saved_events WHERE eventId = ?', eventId);
-    return false;
-  }
+    await db.withTransactionAsync(async () => {
+      const deleted = await db.runAsync(
+        'DELETE FROM saved_events WHERE eventId = ?',
+        eventId
+      );
+      if (deleted.changes) {
+        isSaved = false;
+        return;
+      }
 
-  await db.runAsync('INSERT INTO saved_events (eventId) VALUES (?)', eventId);
-  return true;
+      await db.runAsync('INSERT INTO saved_events (eventId) VALUES (?)', eventId);
+      isSaved = true;
+    });
+
+    return isSaved;
+  });
+
+  // Keep the queue usable if a single database operation fails.
+  savedToggleQueue = toggle.catch(() => {});
+  return toggle;
 }
 
 export async function getNote(eventId) {

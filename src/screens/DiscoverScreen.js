@@ -133,9 +133,7 @@ export default function DiscoverScreen({ navigation }) {
         data={filteredEvents}
         extraData={savedEventIds}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        keyExtractor={(item) => item.id}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
+        keyExtractor={(_, index) => String(index)}
         ListEmptyComponent={
           <EmptyState
             actionLabel="Clear filters"
@@ -151,7 +149,8 @@ export default function DiscoverScreen({ navigation }) {
             initiallySaved={savedEventIds.includes(item.id)}
             onPress={() =>
               navigation.navigate('EventDetails', {
-                eventId: item.id,
+                eventIndex: index,
+                source: 'Discover',
               })
             }
             onToggleSaved={toggleSaved}
