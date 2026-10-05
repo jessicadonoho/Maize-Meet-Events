@@ -1,25 +1,20 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getEvents, getSavedEventIds, toggleSavedEvent } from '../db/database';
-import { getPreferences } from '../storage/preferences';
+import { DEFAULT_PREFERENCES, setCardLayout } from '../storage/preferences';
 
 const AppContext = createContext(null);
 
-export function AppContextProvider({ children, initialSession }) {
+export function AppContextProvider({ children, initialPreferences, initialSession }) {
   const [session, setSession] = useState(initialSession);
   const [events, setEvents] = useState([]);
   const [savedEventIds, setSavedEventIds] = useState([]);
-  const [preferences, setPreferences] = useState({
-    darkTheme: false,
-  });
+  const [preferences, setPreferences] = useState(initialPreferences ?? DEFAULT_PREFERENCES);
 
   useEffect(() => {
-    Promise.all([getEvents(), getSavedEventIds(), getPreferences()]).then(
-      ([nextEvents, nextSavedEventIds, nextPreferences]) => {
-        setEvents(nextEvents);
-        setSavedEventIds(nextSavedEventIds);
-        setPreferences(nextPreferences);
-      }
-    );
+    Promise.all([getEvents(), getSavedEventIds()]).then(([nextEvents, nextSavedEventIds]) => {
+      setEvents(nextEvents);
+      setSavedEventIds(nextSavedEventIds);
+    });
   }, []);
 
   async function toggleSaved(eventId) {
@@ -28,6 +23,11 @@ export function AppContextProvider({ children, initialSession }) {
       isSaved ? [...new Set([...current, eventId])] : current.filter((id) => id !== eventId)
     );
     return isSaved;
+  }
+
+  function setCardLayoutPreference(cardLayout) {
+    setPreferences((current) => ({ ...current, cardLayout }));
+    return setCardLayout(cardLayout);
   }
 
   const value = {
@@ -39,6 +39,7 @@ export function AppContextProvider({ children, initialSession }) {
     toggleSaved,
     preferences,
     setPreferences,
+    setCardLayoutPreference,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

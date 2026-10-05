@@ -8,7 +8,8 @@ import { useAppContext } from '../context/AppContext';
 import { colors } from '../theme/theme';
 
 export default function SavedScreen({ navigation }) {
-  const { events, savedEventIds, toggleSaved } = useAppContext();
+  const { events, savedEventIds, toggleSaved, preferences } = useAppContext();
+  const compact = preferences.cardLayout === 'compact';
   const displayedEvents = useMemo(
     () => events
       .filter((event) => savedEventIds.includes(event.id))
@@ -25,8 +26,10 @@ export default function SavedScreen({ navigation }) {
       <FlatList
         contentContainerStyle={displayedEvents.length ? styles.list : styles.emptyList}
         data={displayedEvents}
-        extraData={savedEventIds}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        extraData={[savedEventIds, preferences.cardLayout]}
+        ItemSeparatorComponent={() => (
+          <View style={compact ? styles.compactSeparator : styles.separator} />
+        )}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         ListEmptyComponent={
           <EmptyState
@@ -38,6 +41,7 @@ export default function SavedScreen({ navigation }) {
           <EventCard
             event={item}
             initiallySaved={savedEventIds.includes(item.id)}
+            layout={preferences.cardLayout}
             onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}
             onToggleSaved={toggleSaved}
           />
@@ -55,4 +59,5 @@ const styles = StyleSheet.create({
   list: { paddingBottom: 28, paddingHorizontal: 20, paddingTop: 18 },
   emptyList: { flexGrow: 1 },
   separator: { height: 12 },
+  compactSeparator: { height: 6 },
 });
