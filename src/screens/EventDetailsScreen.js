@@ -77,9 +77,13 @@ export default function EventDetailsScreen({ navigation, route }) {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.navBar}>
         <Pressable
-          onPress={() =>
-            route.params.source ? navigation.goBack() : navigation.navigate(route.params.source)
-          }
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main');
+            }
+          }}
           style={styles.navButton}
         >
           <MaterialCommunityIcons color={colors.blue} name="arrow-left" size={25} />
@@ -124,7 +128,7 @@ export default function EventDetailsScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>About this event</Text>
         <Text style={styles.description}>{event.description}</Text>
         <View style={styles.tags}>
-          {event.tags.map((tag) => (
+          {(event.tags ?? []).map((tag) => (
             <Chip
               buttonStyle={styles.tag}
               key={tag}
