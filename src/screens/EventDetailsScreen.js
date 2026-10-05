@@ -16,7 +16,8 @@ export default function EventDetailsScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [registered, setRegistered] = useState(false);
   const [registering, setRegistering] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saved = event ? savedEventIds.includes(event.id) : false;
 
   useEffect(() => {
     async function loadEvent() {
@@ -25,7 +26,6 @@ export default function EventDetailsScreen({ navigation, route }) {
         : await getEvent(route.params?.eventId);
       setEvent(selected);
       if (selected) {
-        setSaved(savedEventIds.includes(selected.id));
         setRegistered(await isRegistered(selected.id));
       }
       setLoading(false);
@@ -34,8 +34,16 @@ export default function EventDetailsScreen({ navigation, route }) {
   }, [route.params?.eventId, route.params?.eventIndex]);
 
   async function handleSave() {
-    const next = await toggleSaved(event.id);
-    setSaved(next);
+    if (saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await toggleSaved(event.id);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleRegister() {
@@ -76,7 +84,12 @@ export default function EventDetailsScreen({ navigation, route }) {
         >
           <MaterialCommunityIcons color={colors.blue} name="arrow-left" size={25} />
         </Pressable>
-        <Pressable onPress={handleSave} style={styles.navButton}>
+        <Pressable
+          accessibilityLabel={saved ? 'Remove from saved events' : 'Save event'}
+          disabled={saving}
+          onPress={handleSave}
+          style={styles.navButton}
+        >
           <MaterialCommunityIcons
             color={saved ? '#C6253D' : colors.blue}
             name={saved ? 'heart' : 'heart-outline'}

@@ -13,15 +13,19 @@ export function AppContextProvider({ children, initialSession }) {
   });
 
   useEffect(() => {
-    getEvents().then(setEvents);
-    getSavedEventIds().then(setSavedEventIds);
-    getPreferences().then(setPreferences);
+    Promise.all([getEvents(), getSavedEventIds(), getPreferences()]).then(
+      ([nextEvents, nextSavedEventIds, nextPreferences]) => {
+        setEvents(nextEvents);
+        setSavedEventIds(nextSavedEventIds);
+        setPreferences(nextPreferences);
+      }
+    );
   }, []);
 
   async function toggleSaved(eventId) {
     const isSaved = await toggleSavedEvent(eventId);
     setSavedEventIds((current) =>
-      isSaved ? [...current, eventId] : current.filter((id) => id !== eventId)
+      isSaved ? [...new Set([...current, eventId])] : current.filter((id) => id !== eventId)
     );
     return isSaved;
   }

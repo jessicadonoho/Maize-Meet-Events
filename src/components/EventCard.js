@@ -6,12 +6,19 @@ import { formatEventDate, formatEventTime } from '../utils/date';
 import { colors } from '../theme/theme';
 
 export default function EventCard({ event, initiallySaved, onPress, onToggleSaved }) {
-  const [saved, setSaved] = useState(initiallySaved);
+  const [saving, setSaving] = useState(false);
 
   async function handleSavedPress() {
-    setSaved((current) => !current);
-    const next = await onToggleSaved(event.id);
-    setSaved(next);
+    if (saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onToggleSaved(event.id);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -19,10 +26,16 @@ export default function EventCard({ event, initiallySaved, onPress, onToggleSave
       <Card containerStyle={styles.card}>
         <View style={styles.topRow}>
           <Text style={styles.category}>{event.category.toUpperCase()}</Text>
-          <Pressable hitSlop={4} onPress={handleSavedPress} style={styles.heartButton}>
+          <Pressable
+            accessibilityLabel={initiallySaved ? 'Remove from saved events' : 'Save event'}
+            disabled={saving}
+            hitSlop={4}
+            onPress={handleSavedPress}
+            style={styles.heartButton}
+          >
             <MaterialCommunityIcons
-              color={saved ? '#C6253D' : colors.muted}
-              name={saved ? 'heart' : 'heart-outline'}
+              color={initiallySaved ? '#C6253D' : colors.muted}
+              name={initiallySaved ? 'heart' : 'heart-outline'}
               size={22}
             />
           </Pressable>
